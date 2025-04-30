@@ -4,7 +4,7 @@ function Map() {
   return (
     <>
         MAP
-        <Payment/>
+        
     </>
   );
 }

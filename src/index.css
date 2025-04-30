@@ -16,13 +16,6 @@ body {
   list-style: none;
 }
 
-.header{
-  min-height: 60px;
-  border-bottom: 1px solid #3A3A3A;
-  position: sticky;
-  top: 0;
-}
-
 .app__body{
   margin-top: 24px;
 }

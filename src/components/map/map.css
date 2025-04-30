@@ -44,3 +44,31 @@
     cursor: pointer;
   }
   
+
+  .leaderboard {
+    margin-top: 20px;
+    background: #fff;
+    color: #333;
+    padding: 12px;
+    border-radius: 6px;
+    width: 300px;
+    font-family: sans-serif;    
+    position: absolute;
+    right: 12px;
+    top: 72px;
+  }
+  
+  .leaderboard h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+  }
+  
+  .leaderboard ol {
+    padding-left: 20px;
+    margin: 0;
+  }
+  
+  .leaderboard li {
+    margin-bottom: 6px;
+  }
+  

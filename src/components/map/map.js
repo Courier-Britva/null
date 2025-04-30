@@ -4,21 +4,40 @@ import './map.css'
 const CELL_SIZE = 5
 const WIDTH = 280
 const HEIGHT = 200
+const MIN_ZOOM = 0.6
+const MAX_ZOOM = 1.4
+const ZOOM_STEP = 0.2
 
 function Map() {
   const canvasRef = useRef(null)
 
-  const [occupiedZones, setOccupiedZones] = useState([
-    { x: 10, y: 10, w: 5, h: 4 },
-    { x: 50, y: 70, w: 6, h: 3 },
+  const [plots, setPlots] = useState([
+    {
+      id: 1,
+      title: 'Google',
+      x: 10,
+      y: 10,
+      w: 30,
+      h: 20,
+      color: '#34a853',
+    },
+    {
+      id: 2,
+      title: 'Nullker',
+      x: 50,
+      y: 50,
+      w: 20,
+      h: 25,
+      color: '#fbbc05',
+    },
   ])
 
   const [isSelecting, setIsSelecting] = useState(false)
   const [isBuyMode, setIsBuyMode] = useState(false)
   const [selectionRect, setSelectionRect] = useState(null)
-
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
+
   const panStart = useRef(null)
   const selectStart = useRef(null)
 
@@ -27,20 +46,26 @@ function Map() {
     ctx.save()
     ctx.translate(offset.x, offset.y)
     ctx.scale(zoom, zoom)
-  
-    // Тёмный фон
+
     ctx.fillStyle = '#424242'
     ctx.fillRect(0, 0, ctx.canvas.width / zoom, ctx.canvas.height / zoom)
-  
-    // Светлая область — рабочая зона
+
     ctx.fillStyle = '#f2f2f2'
     ctx.fillRect(0, 0, WIDTH * CELL_SIZE, HEIGHT * CELL_SIZE)
-  
-    for (const zone of occupiedZones) {
-      ctx.fillStyle = 'green'
+
+    for (const zone of plots) {
+      ctx.fillStyle = zone.color || 'green'
       ctx.fillRect(zone.x * CELL_SIZE, zone.y * CELL_SIZE, zone.w * CELL_SIZE, zone.h * CELL_SIZE)
+
+      const centerX = (zone.x + zone.w / 2) * CELL_SIZE
+      const centerY = (zone.y + zone.h / 2) * CELL_SIZE
+      ctx.fillStyle = 'white'
+      ctx.font = 'bold 10px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(zone.title, centerX, centerY)
     }
-  
+
     if (selectionRect) {
       const { x, y, w, h } = selectionRect
       ctx.fillStyle = 'rgba(0, 120, 255, 0.3)'
@@ -49,16 +74,14 @@ function Map() {
       ctx.lineWidth = 1
       ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, w * CELL_SIZE, h * CELL_SIZE)
     }
-  
+
     ctx.restore()
   }
-  
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
+    const ctx = canvasRef.current.getContext('2d')
     draw(ctx)
-  }, [occupiedZones, offset, zoom, selectionRect])
+  }, [plots, offset, zoom, selectionRect])
 
   const screenToGrid = (x, y) => {
     const rect = canvasRef.current.getBoundingClientRect()
@@ -70,15 +93,33 @@ function Map() {
     }
   }
 
+  const isAreaFree = (x, y, w, h) => {
+    for (const p of plots) {
+      const intersects =
+        x < p.x + p.w &&
+        x + w > p.x &&
+        y < p.y + p.h &&
+        y + h > p.y
+      if (intersects) return false
+    }
+    return true
+  }
+
   const handleMouseDown = (e) => {
-    if (e.button === 2) {
-      panStart.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y }
-    } else if (e.button === 0 && isBuyMode) {
-      const { x, y } = screenToGrid(e.clientX, e.clientY)
+    const { x, y } = screenToGrid(e.clientX, e.clientY)
+  
+    if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return
+  
+    if (e.button === 0 && isBuyMode) {
+      if (!isAreaFree(x, y, 1, 1)) return
       selectStart.current = { x, y }
       setIsSelecting(true)
+      setSelectionRect({ x, y, w: 1, h: 1 }) // сразу видим старт-блок
+    } else {
+      panStart.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y }
     }
   }
+  
 
   const handleMouseMove = (e) => {
     if (panStart.current) {
@@ -88,11 +129,17 @@ function Map() {
     } else if (isSelecting && selectStart.current) {
       const { x: x0, y: y0 } = selectStart.current
       const { x: x1, y: y1 } = screenToGrid(e.clientX, e.clientY)
-      const x = Math.min(x0, x1)
-      const y = Math.min(y0, y1)
-      const w = Math.abs(x1 - x0) + 1
-      const h = Math.abs(y1 - y0) + 1
-      setSelectionRect({ x, y, w, h })
+
+      const x = Math.max(0, Math.min(x0, x1))
+      const y = Math.max(0, Math.min(y0, y1))
+      const w = Math.min(WIDTH, Math.abs(x1 - x0) + 1, WIDTH - x)
+      const h = Math.min(HEIGHT, Math.abs(y1 - y0) + 1, HEIGHT - y)
+
+      if (isAreaFree(x, y, w, h)) {
+        setSelectionRect({ x, y, w, h })
+      } else {
+        setSelectionRect(null)
+      }
     }
   }
 
@@ -105,13 +152,13 @@ function Map() {
 
   const handleWheel = (e) => {
     e.preventDefault()
-    const factor = e.deltaY < 0 ? 1.1 : 0.9
-    setZoom(z => Math.max(0.3, Math.min(3, z * factor)))
+    setZoom(z => {
+      let newZoom = z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP)
+      return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom))
+    })
   }
 
-  const handleContextMenu = (e) => {
-    e.preventDefault()
-  }
+  const handleContextMenu = (e) => e.preventDefault()
 
   const handleBuyClick = () => {
     setIsBuyMode(true)
@@ -120,14 +167,24 @@ function Map() {
 
   const handlePay = () => {
     if (selectionRect) {
-      setOccupiedZones(prev => [...prev, selectionRect])
+      const newPlot = {
+        id: plots.length + 1,
+        title: `User #${plots.length + 1}`,
+        color: '#2196f3',
+        ...selectionRect,
+      }
+      setPlots(prev => [...prev, newPlot])
       setSelectionRect(null)
       setIsBuyMode(false)
     }
   }
 
+  const sortedLeaderboard = [...plots]
+    .map(p => ({ ...p, area: p.w * p.h }))
+    .sort((a, b) => b.area - a.area)
+
   return (
-    <div className='canvas__container'>
+    <div className="canvas__container">
       <canvas
         ref={canvasRef}
         width={WIDTH * CELL_SIZE}
@@ -138,17 +195,29 @@ function Map() {
         onMouseUp={handleMouseUp}
         onContextMenu={handleContextMenu}
         onWheel={handleWheel}
-        className='canvas'
+        className="canvas"
       />
       <div style={{ marginTop: 10 }}>
         {!isBuyMode && (
-          <button className='canvas_buy__button' onClick={handleBuyClick}>Buy land</button>
+          <button className="canvas_buy__button" onClick={handleBuyClick}>
+            Buy land
+          </button>
         )}
         {isBuyMode && (
-          <button className='canvas_buy__button'  onClick={handlePay} disabled={!selectionRect}>
+          <button className="canvas_buy__button" onClick={handlePay} disabled={!selectionRect}>
             Pay
           </button>
         )}
+      </div>
+      <div className="leaderboard">
+        <h3>Top Sponsors</h3>
+        <ol>
+          {sortedLeaderboard.map(p => (
+            <li key={p.id}>
+              #{p.id} – {p.title} – {p.w * p.h} m²
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   )

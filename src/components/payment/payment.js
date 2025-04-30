@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import './payment.css'
 
-function Payment() {
+function Payment({ onConfirm, selection }) {
   const [cardNumber, setCardNumber] = useState('')
   const [expiry, setExpiry] = useState('')
   const [cvc, setCvc] = useState('')
+  const [sponsor, setSponsor] = useState('')
 
   const formatCardNumber = (value) => {
     const digits = value.replace(/\D/g, '').slice(0, 16)
@@ -36,6 +37,13 @@ function Payment() {
   const handleCvcChange = (e) => {
     setCvc(e.target.value.replace(/\D/g, '').slice(0, 3))
   }
+
+  const handleSponsorChange = (e) => {
+    setSponsor(e.target.value)
+  }
+
+  const area = selection?.w * selection?.h || 0
+  const price = area * 1
 
   return (
     <div className="payment__container">
@@ -69,6 +77,28 @@ function Payment() {
             />
           </div>
         </div>
+
+        <div className="payment_form__content">
+          <span className="payment__container__summary">
+            You've selected {area} m² — that's ${price}/month
+          </span>
+          <span style={{marginTop: '12px'}} className="payment__container__about">
+            Without your support it would take 12 years and 1 month for this area to become Green again
+          </span>
+          <span className="payment__container__about_details">
+            How we know this?
+          </span>
+          <input
+              type="text"
+              placeholder="Sponsor name"
+              className="sponsor_element__input"
+              value={sponsor}
+              onChange={handleSponsorChange}
+          />
+        </div>
+        <button className="canvas_buy__button" onClick={() => onConfirm(sponsor || 'Anonymous')}>
+          Pay
+        </button>
       </div>
     </div>
   )

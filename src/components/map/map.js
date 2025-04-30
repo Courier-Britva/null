@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import Payment from '../payment/payment'
 import './map.css'
 
 const CELL_SIZE = 5
@@ -12,28 +13,13 @@ function Map() {
   const canvasRef = useRef(null)
 
   const [plots, setPlots] = useState([
-    {
-      id: 1,
-      title: 'Google',
-      x: 10,
-      y: 10,
-      w: 30,
-      h: 20,
-      color: '#34a853',
-    },
-    {
-      id: 2,
-      title: 'Nullker',
-      x: 50,
-      y: 50,
-      w: 20,
-      h: 25,
-      color: '#fbbc05',
-    },
+    { id: 1, title: 'Google', x: 10, y: 10, w: 30, h: 20, color: '#34a853' },
+    { id: 2, title: 'Nullker', x: 50, y: 50, w: 20, h: 25, color: '#fbbc05' },
   ])
 
-  const [isSelecting, setIsSelecting] = useState(false)
   const [isBuyMode, setIsBuyMode] = useState(false)
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [showPayment, setShowPayment] = useState(false)
   const [selectionRect, setSelectionRect] = useState(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
@@ -107,19 +93,17 @@ function Map() {
 
   const handleMouseDown = (e) => {
     const { x, y } = screenToGrid(e.clientX, e.clientY)
-  
     if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return
-  
-    if (e.button === 0 && isBuyMode) {
+
+    if (e.button === 0 && isBuyMode && !showPayment) {
       if (!isAreaFree(x, y, 1, 1)) return
       selectStart.current = { x, y }
       setIsSelecting(true)
-      setSelectionRect({ x, y, w: 1, h: 1 }) // сразу видим старт-блок
+      setSelectionRect({ x, y, w: 1, h: 1 })
     } else {
       panStart.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y }
     }
   }
-  
 
   const handleMouseMove = (e) => {
     if (panStart.current) {
@@ -147,6 +131,10 @@ function Map() {
     panStart.current = null
     if (isSelecting) {
       setIsSelecting(false)
+      if (selectionRect) {
+        setShowPayment(true)
+        setIsBuyMode(false)
+      }
     }
   }
 
@@ -160,24 +148,20 @@ function Map() {
 
   const handleContextMenu = (e) => e.preventDefault()
 
-  const handleBuyClick = () => {
-    setIsBuyMode(true)
-    setSelectionRect(null)
-  }
-
-  const handlePay = () => {
+  const confirmPayment = (sponsorName) => {
     if (selectionRect) {
       const newPlot = {
         id: plots.length + 1,
-        title: `User #${plots.length + 1}`,
+        title: sponsorName,
         color: '#2196f3',
         ...selectionRect,
       }
       setPlots(prev => [...prev, newPlot])
       setSelectionRect(null)
-      setIsBuyMode(false)
+      setShowPayment(false)
     }
   }
+  
 
   const sortedLeaderboard = [...plots]
     .map(p => ({ ...p, area: p.w * p.h }))
@@ -197,18 +181,12 @@ function Map() {
         onWheel={handleWheel}
         className="canvas"
       />
-      <div style={{ marginTop: 10 }}>
-        {!isBuyMode && (
-          <button className="canvas_buy__button" onClick={handleBuyClick}>
-            Buy land
-          </button>
-        )}
-        {isBuyMode && (
-          <button className="canvas_buy__button" onClick={handlePay} disabled={!selectionRect}>
-            Pay
-          </button>
-        )}
-      </div>
+      {!isBuyMode && !showPayment && (
+        <button className="canvas_buy__button" onClick={() => setIsBuyMode(true)}>
+          Buy land
+        </button>
+      )}
+      {showPayment && <Payment onConfirm={confirmPayment} selection={selectionRect} />}
       <div className="leaderboard">
         <h3>Top Sponsors</h3>
         <ol>

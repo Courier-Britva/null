@@ -9,9 +9,12 @@
 
 .header{
     border-bottom: 1px solid #3A3A3A;
-    position: sticky;
     top: 0;
     padding: 12px 0;
+    background: #222;
+    z-index: 12;
+    position: absolute;
+    width: 100vw;
 }
 
 .header_list__link{
@@ -25,7 +28,7 @@
     content: "";
     position: absolute;
     width: 70%;
-    height: 6px;
+    height: 3px;
     border-radius: 200px;
     bottom: -3px;
     left: 0;

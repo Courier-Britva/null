@@ -6,6 +6,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #222;
+  overflow: hidden;
+}
+
+html{
+  overflow: hidden;
 }
 
 *{
@@ -14,11 +19,7 @@ body {
   padding: 0;
   text-decoration: none;
   list-style: none;
-}
-
-.app__body{
-  margin-top: 24px;
-}
+} 
 
 .container{
   max-width: 1440px;
@@ -32,4 +33,7 @@ body {
 
 .App{
   position: relative;
+}
+
+.canvas{
 }
